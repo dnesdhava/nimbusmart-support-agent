@@ -19,4 +19,4 @@ class PolicyPlugin:
             return "NO_MATCH"
         for hit in hits:
             self._session.citations.append({"source": hit.source, "section": hit.section})
-        return "\n\n".join(f"[hit.source] {hit.text}" for hit in hits)
+        return "\n\n".join(f"{hit.source} {hit.text}" for hit in hits)

@@ -20,7 +20,7 @@ class Settings:
     azure_openai_model: str
     azure_openai_api_version: str
     azure_openai_embedding_model: str
-    cors_origins: tuple[str, ...] = ("http://localhost:5173/",)
+    cors_origins: tuple[str, ...] = ("http://localhost:5173",)
 
 @lru_cache()
 def get_settings() -> Settings:

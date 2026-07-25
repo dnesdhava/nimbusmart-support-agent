@@ -12,7 +12,7 @@ _TOKENS: dict[str, "User"] = {}
 class User:
     username: str
     role: str
-    customers_id: str | None
+    customer_id: str | None
     display_name: str
 
     @property
@@ -26,7 +26,7 @@ def login(username: str, password: str) -> str | None:
     user = User(
         username=username,
         role=record["role"],
-        customers_id=record["customers_id"],
+        customer_id=record["customer_id"],
         display_name=record["display_name"],
     )
     token = secrets.token_urlsafe(24)

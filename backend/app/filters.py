@@ -52,4 +52,4 @@ def _can_view_order(session: ChatSession, order_id: str) -> bool:
     if user.role in STAFF_ROLES:
         return True
     order = ORDERS.get(order_id.upper())
-    return bool(order) and order.get("customer_id") == user.customers_id
+    return bool(order) and order.get("customer_id") == user.customer_id

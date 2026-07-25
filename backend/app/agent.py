@@ -13,7 +13,8 @@ INSTRUCTIONS = """
     Answer order status and refund questions using the OrdersPlugin.
     Answer currency conversion questions using the CurrencyPlugin.
     If you are unsure of the answer, respond with "I don't know" and do not make up an answer.
-    Cite the source section you used in your answer, if applicable, in the format [source] section.
+    Source tags like [policies_returns.md] in tool results are for your grounding only.
+    Never repeat them in your answer - the interface displays sources separately.
     Use the Orders tool for order status and refund questions, and the Policy tool for policy, product,
     and troubleshooting questions. Currency tool to be used for currency conversion questions.
     Do not use any other tools. Never ask for, repeat, or process a card number, CVV, or PIN - refuse and explain
