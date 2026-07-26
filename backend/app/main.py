@@ -3,10 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import COLLECTION_NAME, get_settings
 from app.routes.auth import router as auth_router
 from app.routes.chat import router as chat_router
-# from app.observability import setup_observability
+from app.observability import setup_observability
 
 app = FastAPI(title="Nimbusmart Support Agent")
-# setup_observability(app)
+setup_observability(app)
 
 app.add_middleware(
     CORSMiddleware,
