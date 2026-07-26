@@ -40,7 +40,7 @@ def setup_observability(app) -> None:
 
     provider = TracerProvider(resource=resource, sampler=ALWAYS_ON)
     exporter = OTLPSpanExporter(
-        endpoint=f"{host}/api/public/otels/v1/traces",
+        endpoint=f"{host}/api/public/otel/v1/traces",
         headers={"Authorization": f"Basic {auth}"},
     )
     provider.add_span_processor(RedactingSpanProcessor())
