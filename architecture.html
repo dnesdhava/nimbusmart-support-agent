@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NimbusSupport — Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#d7d2c4; --bg-2:#cfc9ba;
+  --card:#efece3; --card-2:#e7e3d7;
+  --ink:#26231a; --ink-mid:#5b5443; --ink-low:#8a8169;
+  --line:#c3bca8; --line-soft:#cfc9ba;
+  --lemon:#eec91c; --lemon-deep:#d9b40a; --lemon-ink:#2b2405;
+  --c-front:#3f7cc0; --c-api:#4f9a6a; --c-agent:#c07a1e;
+  --c-rag:#7d5bb0; --c-sec:#c0503f; --c-data:#3f8b86;
+  --font-display:"Space Grotesk",system-ui,sans-serif;
+  --font-body:"IBM Plex Sans",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+  --radius:16px; --shadow:0 10px 30px -12px rgba(38,35,26,.28);
+  --ease:cubic-bezier(.25,.6,.3,1);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:
+    radial-gradient(1000px 600px at 88% -8%,rgba(238,201,28,.16),transparent 60%),
+    radial-gradient(900px 600px at -6% 30%,rgba(125,91,176,.08),transparent 60%),
+    var(--bg);
+  color:var(--ink);font-family:var(--font-body);line-height:1.6;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+h1,h2,h3{font-family:var(--font-display);letter-spacing:-.01em;line-height:1.15;margin:0}
+a{color:inherit}
+
+/* ---------- single-screen architecture map ---------- */
+.map-hero{height:100vh;min-height:560px;display:flex;flex-direction:column;padding:18px 24px 6px;position:relative;overflow:hidden;
+  border-bottom:1px solid var(--line)}
+.map-top{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;max-width:1500px;margin:0 auto;width:100%}
+.map-kicker{font-family:var(--font-mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--lemon-deep)}
+.map-top h1{font-size:clamp(19px,2.5vw,29px);font-weight:700;margin-top:5px}
+.map-legend{display:flex;gap:15px;font-size:12px;color:var(--ink-mid);flex-wrap:wrap}
+.map-legend span{display:inline-flex;align-items:center;gap:6px}
+.map-legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.mapstage{position:relative;width:100%;max-width:1500px;margin:auto;aspect-ratio:16/9;max-height:calc(100vh - 118px)}
+.wires{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.wires path.wire{fill:none;stroke:#8a8169;stroke-width:2.3;opacity:.4}
+.wires .trav{pointer-events:none;filter:drop-shadow(0 2px 3px rgba(38,35,26,.35))}
+.wires .trav.ans{filter:drop-shadow(0 0 7px rgba(238,201,28,.9))}
+.mnode{position:absolute;transform:translate(-50%,-50%);background:var(--card);border:1px solid var(--line);
+  border-left:4px solid var(--accent,var(--lemon));border-radius:12px;padding:9px 13px;box-shadow:var(--shadow);
+  display:flex;align-items:center;gap:10px;white-space:nowrap;z-index:2;animation:pop .5s var(--ease) both}
+@keyframes pop{from{opacity:0;transform:translate(-50%,-50%) scale(.9)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+.mnode .mi{width:30px;height:30px;border-radius:8px;flex-shrink:0;display:grid;place-items:center;color:#fff;background:var(--accent,var(--lemon))}
+.mnode .mi svg{width:17px;height:17px}
+.mnode .ml{display:flex;flex-direction:column;line-height:1.2}
+.mnode .ml b{font-family:var(--font-display);font-size:13.5px;font-weight:600;color:var(--ink)}
+.mnode .ml small{font-family:var(--font-mono);font-size:10px;color:var(--ink-low)}
+.mnode.lemon{--accent:var(--lemon)}.mnode.lemon .mi{color:var(--lemon-ink)}
+.mnode.front{--accent:var(--c-front)}.mnode.api{--accent:var(--c-api)}.mnode.agent{--accent:var(--c-agent)}
+.mnode.rag{--accent:var(--c-rag)}.mnode.data{--accent:var(--c-data)}.mnode.tool{--accent:var(--lemon-deep)}
+.mnode.user{--accent:var(--ink-mid)}
+.mnode.band{border-left:none;border:1.5px dashed var(--c-sec);background:linear-gradient(180deg,rgba(192,80,63,.1),var(--card));
+  flex-direction:column;gap:1px;align-items:center;padding:8px 22px}
+.mnode.band .mi{width:26px;height:26px;background:var(--c-sec);margin-bottom:2px}
+.mnode.band b{font-family:var(--font-display);font-weight:600;font-size:13px;color:var(--c-sec)}
+.mnode.band small{font-family:var(--font-mono);font-size:9.5px;color:var(--ink-low)}
+.resp-label{position:absolute;left:44%;top:3%;transform:translate(-50%,-50%);font-family:var(--font-mono);font-size:11px;
+  color:var(--lemon-deep);background:var(--bg);padding:2px 9px;border-radius:6px;border:1px solid var(--line);z-index:2}
+.scroll-cue{position:absolute;left:50%;bottom:2px;transform:translateX(-50%);font-family:var(--font-mono);font-size:11px;
+  color:var(--ink-low);animation:cue 1.8s ease-in-out infinite;z-index:2}
+@keyframes cue{0%,100%{transform:translateX(-50%) translateY(0);opacity:.55}50%{transform:translateX(-50%) translateY(4px);opacity:1}}
+@media(max-width:760px){
+  .map-hero{height:auto;min-height:0;padding:16px 14px}
+  .mapstage{max-height:64vh}
+  .mnode{padding:6px 9px;gap:7px}
+  .mnode .mi{width:22px;height:22px}.mnode .mi svg{width:13px;height:13px}
+  .mnode .ml b{font-size:10.5px}.mnode .ml small{display:none}
+  .mnode.band small{display:none}
+  .scroll-cue{display:none}
+}
+
+/* ---------- reveal ---------- */
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .7s var(--ease),transform .7s var(--ease)}
+.reveal.in{opacity:1;transform:none}
+
+/* ---------- hero ---------- */
+.hero{position:relative;text-align:center;padding:88px 0 60px;overflow:hidden}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono);
+  font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink-mid);
+  padding:7px 15px;border-radius:999px;border:1px solid var(--line);background:var(--card);margin-bottom:26px}
+.hero-badge .dot{width:8px;height:8px;border-radius:50%;background:var(--c-api);box-shadow:0 0 0 0 rgba(79,154,106,.5);animation:pulse 2.4s infinite}
+.hero h1{font-size:clamp(38px,6.5vw,68px);font-weight:700}
+.hero h1 .accent{position:relative;color:var(--lemon-ink);white-space:nowrap}
+.hero h1 .accent::after{content:"";position:absolute;left:-4px;right:-4px;bottom:6px;height:.32em;
+  background:var(--lemon);z-index:-1;border-radius:3px;transform:skew(-4deg);animation:hl 1s .5s var(--ease) both;transform-origin:left}
+@keyframes hl{from{transform:skew(-4deg) scaleX(0)}to{transform:skew(-4deg) scaleX(1)}}
+.hero p.sub{max-width:640px;margin:22px auto 0;font-size:18px;color:var(--ink-mid)}
+.stack-row{display:flex;flex-wrap:wrap;justify-content:center;gap:9px;margin-top:34px}
+.stack-tag{font-family:var(--font-mono);font-size:12.5px;padding:7px 13px;border-radius:999px;
+  background:var(--card);border:1px solid var(--line);color:var(--ink-mid);transition:transform .2s var(--ease),border-color .2s}
+.stack-tag:hover{transform:translateY(-3px);border-color:var(--lemon-deep)}
+.pitcher{width:74px;height:74px;margin:0 auto 4px;display:grid;place-items:center;color:var(--lemon-ink);
+  background:var(--lemon);border-radius:22px;box-shadow:var(--shadow);animation:float 5s ease-in-out infinite}
+.pitcher svg{width:40px;height:40px}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(79,154,106,.5)}50%{box-shadow:0 0 0 7px rgba(79,154,106,0)}}
+.lemon-slice{position:absolute;border-radius:50%;opacity:.5;pointer-events:none;filter:blur(1px)}
+
+/* ---------- section frame ---------- */
+section{padding:56px 0}
+.eyebrow{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.16em;
+  color:var(--lemon-deep);font-weight:500;margin-bottom:12px}
+.sec-head h2{font-size:clamp(26px,4vw,38px);font-weight:700}
+.sec-head p{color:var(--ink-mid);max-width:640px;margin:14px 0 0;font-size:16.5px}
+.sec-head{margin-bottom:38px}
+
+/* ---------- layer stack (big picture) ---------- */
+.layers{display:flex;flex-direction:column;gap:0;position:relative}
+.layer{position:relative;display:grid;grid-template-columns:150px 1fr;gap:20px;align-items:center;
+  padding:20px 22px;border:1px solid var(--line);background:var(--card);border-radius:var(--radius);
+  box-shadow:var(--shadow);z-index:1}
+.layer + .connector{height:34px;display:flex;justify-content:center;position:relative}
+.layer + .connector::before{content:"";width:2px;height:100%;background:linear-gradient(var(--line-soft),var(--line))}
+.layer + .connector .spark{position:absolute;top:0;width:9px;height:9px;border-radius:50%;background:var(--lemon-deep);
+  box-shadow:0 0 10px 2px rgba(217,180,10,.6);animation:drop 2.4s linear infinite}
+@keyframes drop{0%{top:-4px;opacity:0}15%{opacity:1}85%{opacity:1}100%{top:32px;opacity:0}}
+.layer-tag{display:flex;flex-direction:column;gap:4px}
+.layer-tag .lname{font-family:var(--font-display);font-weight:600;font-size:15px}
+.layer-tag .lkind{font-family:var(--font-mono);font-size:11px;color:var(--ink-low);text-transform:uppercase;letter-spacing:.08em}
+.layer-body{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-family:var(--font-mono);font-size:12.5px;padding:6px 11px;border-radius:8px;background:var(--card-2);
+  border:1px solid var(--line);color:var(--ink-mid)}
+.layer::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:4px;background:var(--accent,var(--lemon))}
+.layer.f{--accent:var(--c-front)} .layer.a{--accent:var(--c-api)} .layer.g{--accent:var(--c-agent)}
+.layer.s{--accent:var(--c-sec)} .layer.r{--accent:var(--c-rag)} .layer.d{--accent:var(--c-data)}
+
+/* ---------- pipeline (generic vertical flow) ---------- */
+.pipe{display:flex;flex-direction:column;align-items:stretch;gap:0;max-width:720px;margin:0 auto}
+.node{position:relative;display:flex;gap:16px;align-items:flex-start;padding:18px 20px;border:1px solid var(--line);
+  background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow)}
+.node .ico{flex-shrink:0;width:44px;height:44px;border-radius:12px;display:grid;place-items:center;color:#fff;font-size:20px}
+.node .ico svg{width:23px;height:23px}
+.node .txt h3{font-size:16px;font-weight:600;margin-bottom:3px}
+.node .txt p{margin:0;font-size:14px;color:var(--ink-mid)}
+.node .txt .meta{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-low);margin-top:6px;display:inline-block;
+  background:var(--card-2);padding:2px 8px;border-radius:6px;border:1px solid var(--line)}
+.flow{height:40px;display:flex;justify-content:center;position:relative}
+.flow::before{content:"";width:2px;height:100%;background:repeating-linear-gradient(var(--ink-low) 0 4px,transparent 4px 9px);opacity:.45}
+.flow .pkt{position:absolute;top:0;width:11px;height:11px;border-radius:3px;background:var(--lemon);
+  border:1px solid var(--lemon-deep);animation:travel 1.8s linear infinite}
+.flow .pkt.v{border-radius:50%;background:var(--c-rag);border-color:#5c3f8c}
+@keyframes travel{0%{top:-6px;opacity:0}12%{opacity:1}88%{opacity:1}100%{top:38px;opacity:0}}
+.ic-front{background:var(--c-front)} .ic-api{background:var(--c-api)} .ic-agent{background:var(--c-agent)}
+.ic-rag{background:var(--c-rag)} .ic-sec{background:var(--c-sec)} .ic-data{background:var(--c-data)}
+.ic-lemon{background:var(--lemon);color:var(--lemon-ink)!important}
+
+/* ---------- provider grid ---------- */
+.envbox{font-family:var(--font-mono);font-size:13.5px;background:var(--card);border:1px solid var(--line);
+  border-left:4px solid var(--lemon);border-radius:12px;padding:16px 20px;box-shadow:var(--shadow);
+  color:var(--ink-mid);max-width:520px;margin:0 auto 30px;line-height:1.9}
+.envbox b{color:var(--ink)}
+.envbox .cm{color:var(--ink-low)}
+.prov-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.prov{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent,var(--lemon));
+  border-radius:14px;padding:15px 16px;box-shadow:var(--shadow);transition:transform .2s var(--ease)}
+.prov:hover{transform:translateY(-4px)}
+.prov h4{font-family:var(--font-display);font-size:14.5px;font-weight:600;margin:0}
+.prov .n2{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-low);letter-spacing:.1em}
+.prov .env{font-family:var(--font-mono);font-size:11px;color:var(--ink-mid);display:block;margin:9px 0 10px;
+  background:var(--card-2);border:1px solid var(--line);border-radius:6px;padding:4px 8px;overflow-x:auto;white-space:nowrap}
+.cap{font-family:var(--font-mono);font-size:10px;padding:3px 9px;border-radius:999px;display:inline-block}
+.cap.both{background:rgba(63,139,134,.16);color:#2f6b67;border:1px solid rgba(63,139,134,.45)}
+.cap.chat{background:rgba(238,201,28,.22);color:var(--lemon-ink);border:1px solid var(--lemon-deep)}
+.fallback{margin-top:16px;border:1px dashed var(--c-rag);background:rgba(125,91,176,.08);
+  border-radius:14px;padding:16px 20px;font-size:14.5px;color:var(--ink-mid)}
+.fallback b{color:var(--ink)}
+
+/* ---------- ingestion visual ---------- */
+.ingest-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;align-items:center}
+.stage{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 12px;text-align:center;box-shadow:var(--shadow);position:relative}
+.stage .num{font-family:var(--font-mono);font-size:11px;color:var(--ink-low);letter-spacing:.1em}
+.stage h4{font-family:var(--font-display);font-size:14px;margin:8px 0 6px}
+.stage p{font-size:12px;color:var(--ink-mid);margin:0}
+.stage .art{height:56px;margin:6px auto 10px;display:grid;place-items:center}
+.arrow{display:grid;place-items:center;color:var(--lemon-deep)}
+.arrow svg{width:24px;height:24px;animation:nudge 1.6s ease-in-out infinite}
+@keyframes nudge{0%,100%{transform:translateX(-2px)}50%{transform:translateX(3px)}}
+/* doc lines */
+.doc{width:34px;height:44px;background:var(--card-2);border:1px solid var(--line);border-radius:4px;padding:6px 5px;display:flex;flex-direction:column;gap:3px}
+.doc i{height:3px;background:var(--line);border-radius:2px;display:block}
+.doc i:nth-child(2){width:80%}.doc i:nth-child(3){width:60%}.doc i:nth-child(4){width:90%}
+/* chunk stack */
+.chunks{position:relative;width:40px;height:46px}
+.chunks span{position:absolute;left:0;width:34px;height:11px;border-radius:3px;background:var(--lemon);border:1px solid var(--lemon-deep);opacity:.92;animation:split 3s var(--ease) infinite}
+.chunks span:nth-child(1){top:0;animation-delay:0s}.chunks span:nth-child(2){top:14px;animation-delay:.2s}.chunks span:nth-child(3){top:28px;animation-delay:.4s}
+@keyframes split{0%,100%{transform:translateX(0)}50%{transform:translateX(5px)}}
+/* vector */
+.vec{font-family:var(--font-mono);font-size:10px;color:var(--c-rag);display:flex;flex-direction:column;gap:2px;align-items:center}
+.vec b{letter-spacing:1px}
+.vecbars{display:flex;gap:2px;align-items:flex-end;height:26px}
+.vecbars i{width:4px;background:var(--c-rag);border-radius:1px;animation:eq 1.4s ease-in-out infinite}
+.vecbars i:nth-child(1){animation-delay:0s}.vecbars i:nth-child(2){animation-delay:.15s}.vecbars i:nth-child(3){animation-delay:.3s}.vecbars i:nth-child(4){animation-delay:.45s}.vecbars i:nth-child(5){animation-delay:.6s}
+@keyframes eq{0%,100%{height:8px}50%{height:24px}}
+/* db */
+.db{width:40px;height:46px;position:relative}
+.db span{position:absolute;left:0;right:0;height:12px;border:1px solid var(--c-data);border-radius:50%/40%;background:rgba(63,139,134,.14)}
+.db span:nth-child(1){top:0}.db span:nth-child(2){top:11px}.db span:nth-child(3){top:22px;height:20px;border-radius:0 0 40% 40%/0 0 60% 60%;border-top:none}
+.db-glow{position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 0 rgba(63,139,134,.5);animation:pulse2 2.6s infinite}
+@keyframes pulse2{0%,100%{box-shadow:0 0 0 0 rgba(63,139,134,.4)}50%{box-shadow:0 0 14px 3px rgba(63,139,134,0)}}
+
+/* ---------- hybrid retrieval fork ---------- */
+.retr{max-width:760px;margin:0 auto}
+.fork{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:14px 0}
+.branch{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:var(--card);box-shadow:var(--shadow)}
+.branch h4{font-family:var(--font-display);font-size:15px;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+.branch h4 .b{width:10px;height:10px;border-radius:3px}
+.branch p{margin:0;font-size:13px;color:var(--ink-mid)}
+.branch.dense h4 .b{background:var(--c-rag)}.branch.sparse h4 .b{background:var(--c-agent)}
+.merge{text-align:center;border:1px dashed var(--lemon-deep);background:rgba(238,201,28,.1);border-radius:14px;padding:14px}
+.merge b{font-family:var(--font-mono)}
+.mini-flow{height:26px;display:flex;justify-content:center;position:relative}
+.mini-flow::before{content:"";width:2px;height:100%;background:var(--line)}
+.mini-flow .pkt{position:absolute;top:0;width:9px;height:9px;border-radius:50%;background:var(--lemon);animation:travel 1.5s linear infinite}
+
+/* ---------- security spotlight ---------- */
+.sec-card{border:1px solid var(--c-sec);border-left-width:5px;background:linear-gradient(180deg,rgba(192,80,63,.06),var(--card));
+  border-radius:var(--radius);padding:26px 28px;box-shadow:var(--shadow)}
+.sec-card h3{font-size:20px;margin-bottom:6px}
+.sec-list{list-style:none;padding:0;margin:18px 0 0;display:grid;gap:12px}
+.sec-list li{display:flex;gap:12px;align-items:flex-start;font-size:14.5px;color:var(--ink-mid)}
+.sec-list .k{flex-shrink:0;width:26px;height:26px;border-radius:8px;background:var(--c-sec);color:#fff;display:grid;place-items:center;font-size:14px}
+.sec-list b{color:var(--ink)}
+
+/* ---------- stat band ---------- */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 18px;text-align:center;box-shadow:var(--shadow)}
+.stat .n{font-family:var(--font-display);font-size:34px;font-weight:700;color:var(--lemon-ink)}
+.stat .l{font-size:12.5px;color:var(--ink-mid);margin-top:4px}
+
+footer{padding:50px 0 64px;text-align:center;color:var(--ink-low);font-size:13.5px}
+footer .brand{font-family:var(--font-display);font-weight:600;color:var(--ink);font-size:15px}
+
+@media(max-width:760px){
+  .ingest-grid{grid-template-columns:1fr;gap:10px}
+  .arrow svg{transform:rotate(90deg)}
+  .fork{grid-template-columns:1fr}
+  .prov-grid{grid-template-columns:1fr 1fr}
+  .stats{grid-template-columns:1fr 1fr}
+  .layer{grid-template-columns:1fr;gap:12px}
+  .node .txt p{font-size:13.5px}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+  .reveal{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ SINGLE-SCREEN ARCHITECTURE MAP ============ -->
+<section class="map-hero">
+  <div class="map-top">
+    <div>
+      <div class="map-kicker">NimbusSupport · complete architecture</div>
+      <h1>From a user's question to a secured, grounded answer</h1>
+    </div>
+    <div class="map-legend">
+      <span><i style="background:var(--lemon-deep)"></i>request flow</span>
+      <span><i style="background:var(--c-rag)"></i>retrieval</span>
+      <span><i style="background:var(--lemon)"></i>streamed response</span>
+      <span><i style="background:var(--c-sec)"></i>security</span>
+    </div>
+  </div>
+
+  <div class="mapstage">
+    <svg class="wires" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <marker id="arw" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#8a8169"/>
+        </marker>
+        <!-- traveller icons (cloned & moved by script) -->
+        <g id="sym-q">
+          <circle r="16" fill="#d9b40a" stroke="#fff" stroke-width="2.5"/>
+          <text x="0" y="6.5" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="20" font-weight="700" fill="#fff">?</text>
+        </g>
+        <g id="sym-a">
+          <circle r="16" fill="#eec91c" stroke="#fff" stroke-width="2.5"/>
+          <g transform="scale(0.62) translate(-12,-12)" fill="none" stroke="#2b2405" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18h6"/><path d="M10 21h4"/>
+            <path d="M12 2a7 7 0 0 0-4 12c.6.5 1 1.2 1 2h6c0-.8.4-1.5 1-2a7 7 0 0 0-4-12z"/>
+          </g>
+        </g>
+      </defs>
+      <!-- request spine -->
+      <path id="w1" class="wire" marker-end="url(#arw)" d="M204,150 L320,150"/>
+      <path id="w2" class="wire" marker-end="url(#arw)" d="M520,150 L622,150"/>
+      <path id="w3" class="wire" marker-end="url(#arw)" d="M820,150 L925,150"/>
+      <path id="w4" class="wire" marker-end="url(#arw)" d="M1136,150 L1296,150"/>
+      <!-- auth reads users.json -->
+      <path id="w5" class="wire" marker-end="url(#arw)" d="M720,194 L720,270"/>
+      <!-- agent -> guardrail -> tools -->
+      <path id="w6" class="wire" marker-end="url(#arw)" d="M1030,204 L1030,290"/>
+      <path id="w7" class="wire" marker-end="url(#arw)" d="M905,368 C875,410 822,414 821,450"/>
+      <path id="w8" class="wire" marker-end="url(#arw)" d="M1030,368 L1030,450"/>
+      <path id="w9" class="wire" marker-end="url(#arw)" d="M1158,368 C1195,410 1239,414 1240,450"/>
+      <!-- tools -> data / rag -->
+      <path id="w10" class="wire" marker-end="url(#arw)" d="M820,550 L820,652"/>
+      <path id="w11" class="wire" marker-end="url(#arw)" d="M1240,550 L1240,638"/>
+      <path id="w12" class="wire" marker-end="url(#arw)" d="M1240,742 L1240,792"/>
+      <!-- streamed response — back through API → Frontend → User -->
+      <path id="wR1" class="wire" marker-end="url(#arw)" d="M1012,120 C915,74 812,74 728,120"/>
+      <path id="wR2" class="wire" marker-end="url(#arw)" d="M712,120 C618,74 514,74 428,120"/>
+      <path id="wR3" class="wire" marker-end="url(#arw)" d="M412,120 C326,76 236,76 150,120"/>
+
+      <!-- travellers are injected & moved by the script below -->
+    </svg>
+
+    <div class="resp-label">streamed response · SSE (tokens · tool calls · citations)</div>
+
+    <!-- spine -->
+    <div class="mnode user" style="left:8.75%;top:16.7%">
+      <div class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></div>
+      <div class="ml"><b>User</b><small>customer / staff</small></div>
+    </div>
+    <div class="mnode front" style="left:26.25%;top:16.7%">
+      <div class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg></div>
+      <div class="ml"><b>Frontend</b><small>React · Vite chat</small></div>
+    </div>
+    <div class="mnode api" style="left:45%;top:16.7%">
+      <div class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 7.6 8 10 4.6-2.4 8-5 8-10V6z"/></svg></div>
+      <div class="ml"><b>API</b><small>FastAPI · auth token</small></div>
+    </div>
+    <div class="mnode agent" style="left:64.375%;top:16.7%">
+      <div class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.5 5.5l2 2M16.5 16.5l2 2M18.5 5.5l-2 2M7.5 16.5l-2 2"/></svg></div>
+      <div class="ml"><b>Agent</b><small>Semantic Kernel</small></div>
+    </div>
+    <div class="mnode lemon" style="left:87.5%;top:16.7%">
+      <div class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 7v5l3 2"/></svg></div>
+      <div class="ml"><b>LLM provider</b><small>any of 8 · one API key</small></div>
+    </div>
+
+    <!-- auth store -->
+    <div class="mnode data" style="left:45%;top:33.3%">
+      <div class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/></svg></div>
+      <div class="ml"><b>users.json</b><small>identities · roles</small></div>
+    </div>
+
+    <!-- security band -->
+    <div class="mnode band" style="left:64.375%;top:36.7%">
+      <div class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+      <b>Guardrail filter</b><small>RBAC · card-block · audit — wraps every tool call</small>
+    </div>
+
+    <!-- tools -->
+    <div class="mnode tool" style="left:51.25%;top:55.6%">
+      <div class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 14h8"/></svg></div>
+      <div class="ml"><b>Orders</b><small>status · refund</small></div>
+    </div>
+    <div class="mnode tool" style="left:64.375%;top:55.6%">
+      <div class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4.5 1.3c0 2.5-3 2.2-3 4M12 17h.01"/></svg></div>
+      <div class="ml"><b>Currency</b><small>convert rates</small></div>
+    </div>
+    <div class="mnode tool" style="left:77.5%;top:55.6%">
+      <div class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+      <div class="ml"><b>Policy</b><small>RAG search</small></div>
+    </div>
+
+    <!-- data / rag -->
+    <div class="mnode data" style="left:51.25%;top:76.7%">
+      <div class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/></svg></div>
+      <div class="ml"><b>orders.json</b><small>order records</small></div>
+    </div>
+    <div class="mnode rag" style="left:77.5%;top:76.7%">
+      <div class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+      <div class="ml"><b>Hybrid RAG</b><small>vector + BM25 → RRF → rerank</small></div>
+    </div>
+    <div class="mnode data" style="left:77.5%;top:92.8%">
+      <div class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></div>
+      <div class="ml"><b>ChromaDB</b><small>vectors + citations</small></div>
+    </div>
+
+    <div class="scroll-cue">scroll for the full breakdown ▾</div>
+  </div>
+</section>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="lemon-slice" style="width:120px;height:120px;background:radial-gradient(circle at 40% 40%,#f4d94a,#e0b70e);top:10%;left:8%"></div>
+  <div class="lemon-slice" style="width:80px;height:80px;background:radial-gradient(circle at 40% 40%,#f4d94a,#e0b70e);top:60%;right:10%"></div>
+  <div class="lemon-slice" style="width:50px;height:50px;background:radial-gradient(circle at 40% 40%,#f4d94a,#e0b70e);bottom:8%;left:22%"></div>
+  <div class="wrap">
+    <div class="pitcher">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 3.5h10l-.9 14.2a2.4 2.4 0 0 1-2.4 2.3h-3.4a2.4 2.4 0 0 1-2.4-2.3L7 3.5Z"/>
+        <path d="M7 3.5 5.2 6.2"/><path d="M17 7.2c2.7.4 2.7 4.8 0 5.2"/>
+        <circle cx="11.9" cy="12.4" r="2.7"/><path d="M11.9 9.7v5.4M9.2 12.4h5.4"/>
+      </svg>
+    </div>
+    <div class="hero-badge"><span class="dot"></span>End-to-end architecture</div>
+    <h1>How <span class="accent">NimbusSupport</span> works</h1>
+    <p class="sub">A support copilot built on an agentic RAG stack — from a user's question, through role-based security and hybrid retrieval, to a grounded, cited answer streamed back token by token. Bring whichever API key you already have.</p>
+    <div class="stack-row">
+      <span class="stack-tag">React + Vite</span>
+      <span class="stack-tag">FastAPI</span>
+      <span class="stack-tag">Semantic Kernel</span>
+      <span class="stack-tag">8 LLM providers</span>
+      <span class="stack-tag">ChromaDB</span>
+      <span class="stack-tag">BM25</span>
+      <span class="stack-tag">Server-Sent Events</span>
+    </div>
+  </div>
+</header>
+
+<!-- ============ BIG PICTURE ============ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">The big picture</div>
+      <h2>Six layers, one request</h2>
+      <p>Every question travels top to bottom and back. Each layer has one job — and the security layer sits in the middle, wrapping every tool the agent tries to call.</p>
+    </div>
+    <div class="layers">
+      <div class="layer f reveal">
+        <div class="layer-tag"><span class="lname">Frontend</span><span class="lkind">browser</span></div>
+        <div class="layer-body"><span class="chip">React UI</span><span class="chip">login + token</span><span class="chip">streaming chat</span><span class="chip">tool-call trace</span></div>
+      </div>
+      <div class="connector"><span class="spark"></span></div>
+      <div class="layer a reveal">
+        <div class="layer-tag"><span class="lname">API</span><span class="lkind">FastAPI</span></div>
+        <div class="layer-body"><span class="chip">/api/login</span><span class="chip">/api/chat/stream</span><span class="chip">SSE</span><span class="chip">bearer auth</span></div>
+      </div>
+      <div class="connector"><span class="spark" style="animation-delay:.4s"></span></div>
+      <div class="layer g reveal">
+        <div class="layer-tag"><span class="lname">Agent</span><span class="lkind">Semantic Kernel</span></div>
+        <div class="layer-body"><span class="chip">ChatCompletionAgent</span><span class="chip">auto tool-choice</span><span class="chip">Orders · Currency · Policy</span><span class="chip">pluggable provider</span></div>
+      </div>
+      <div class="connector"><span class="spark" style="animation-delay:.8s"></span></div>
+      <div class="layer s reveal">
+        <div class="layer-tag"><span class="lname">Security</span><span class="lkind">guardrail filter</span></div>
+        <div class="layer-body"><span class="chip">RBAC</span><span class="chip">card-block</span><span class="chip">audit log</span><span class="chip">wraps every tool call</span></div>
+      </div>
+      <div class="connector"><span class="spark" style="animation-delay:1s"></span></div>
+      <div class="layer r reveal">
+        <div class="layer-tag"><span class="lname">Retrieval</span><span class="lkind">Hybrid RAG</span></div>
+        <div class="layer-body"><span class="chip">vector search</span><span class="chip">BM25</span><span class="chip">RRF fusion</span><span class="chip">LLM rerank</span></div>
+      </div>
+      <div class="connector"><span class="spark" style="animation-delay:1.2s"></span></div>
+      <div class="layer d reveal">
+        <div class="layer-tag"><span class="lname">Data</span><span class="lkind">stores</span></div>
+        <div class="layer-body"><span class="chip">ChromaDB (vectors)</span><span class="chip">orders.json</span><span class="chip">users.json</span><span class="chip">policy docs</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PROVIDERS ============ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">The model layer</div>
+      <h2>Bring whichever API key you have</h2>
+      <p>Nothing in the agent, the guardrail or the retriever is tied to one vendor. Pick a provider with a single environment variable — or just paste a key and let the backend detect who it belongs to.</p>
+    </div>
+
+    <div class="envbox reveal">
+      <span class="cm"># backend/.env</span><br />
+      <b>LLM_PROVIDER</b>=groq<br />
+      <b>LLM_API_KEY</b>=gsk_…<br />
+      <span class="cm"># that's the whole switch</span>
+    </div>
+
+    <div class="prov-grid">
+      <div class="prov reveal" style="--accent:var(--c-front)">
+        <div class="n2">01</div><h4>Microsoft Foundry</h4>
+        <span class="env">LLM_PROVIDER=azure</span>
+        <span class="cap both">chat + embeddings</span>
+      </div>
+      <div class="prov reveal" style="--accent:var(--c-api)">
+        <div class="n2">02</div><h4>OpenAI</h4>
+        <span class="env">LLM_PROVIDER=openai</span>
+        <span class="cap both">chat + embeddings</span>
+      </div>
+      <div class="prov reveal" style="--accent:var(--c-agent)">
+        <div class="n2">03</div><h4>Anthropic</h4>
+        <span class="env">LLM_PROVIDER=anthropic</span>
+        <span class="cap chat">chat only</span>
+      </div>
+      <div class="prov reveal" style="--accent:var(--c-rag)">
+        <div class="n2">04</div><h4>Google Gemini</h4>
+        <span class="env">LLM_PROVIDER=gemini</span>
+        <span class="cap both">chat + embeddings</span>
+      </div>
+      <div class="prov reveal" style="--accent:var(--c-sec)">
+        <div class="n2">05</div><h4>OpenRouter</h4>
+        <span class="env">LLM_PROVIDER=openrouter</span>
+        <span class="cap chat">chat only</span>
+      </div>
+      <div class="prov reveal" style="--accent:var(--lemon-deep)">
+        <div class="n2">06</div><h4>Groq</h4>
+        <span class="env">LLM_PROVIDER=groq</span>
+        <span class="cap chat">chat only</span>
+      </div>
+      <div class="prov reveal" style="--accent:var(--c-data)">
+        <div class="n2">07</div><h4>Cerebras</h4>
+        <span class="env">LLM_PROVIDER=cerebras</span>
+        <span class="cap chat">chat only</span>
+      </div>
+      <div class="prov reveal" style="--accent:var(--ink-mid)">
+        <div class="n2">08</div><h4>Ollama</h4>
+        <span class="env">LLM_PROVIDER=ollama</span>
+        <span class="cap both">local · no key</span>
+      </div>
+    </div>
+
+    <div class="fallback reveal">
+      <b>What about the providers with no embeddings API?</b> Anthropic, OpenRouter, Groq and Cerebras
+      serve chat only. When one of those is selected, embeddings automatically fall back to a
+      <b>MiniLM ONNX model that runs on your machine</b> — bundled with ChromaDB, no key and no network
+      call — so hybrid retrieval keeps working with a single chat key. Each embedding model gets its own
+      ChromaDB collection, so swapping providers never collides with a differently-shaped index.
+    </div>
+  </div>
+</section>
+
+<!-- ============ INGESTION ============ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Offline · runs once</div>
+      <h2>Building the knowledge base</h2>
+      <p>Before the agent can answer anything, the 8 policy documents are turned into searchable vectors. This is the ingestion pipeline — chunk, embed, store.</p>
+    </div>
+    <div class="ingest-grid">
+      <div class="stage reveal">
+        <div class="num">01</div>
+        <div class="art"><div class="doc"><i></i><i></i><i></i><i></i></div></div>
+        <h4>Documents</h4><p>8 markdown policy &amp; FAQ files</p>
+      </div>
+      <div class="arrow reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="stage reveal">
+        <div class="num">02</div>
+        <div class="art"><div class="chunks"><span></span><span></span><span></span></div></div>
+        <h4>Chunk</h4><p>Split on headers, ~700 chars, 100 overlap</p>
+      </div>
+      <div class="arrow reveal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="stage reveal">
+        <div class="num">03</div>
+        <div class="art"><div class="vec"><div class="vecbars"><i></i><i></i><i></i><i></i><i></i></div><b>[0.12, -0.4 …]</b></div></div>
+        <h4>Embed</h4><p>Your provider — or a local ONNX model, batches of 16</p>
+      </div>
+    </div>
+    <div class="ingest-grid" style="grid-template-columns:1fr;margin-top:14px">
+      <div class="arrow reveal" style="transform:rotate(90deg)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+    </div>
+    <div class="ingest-grid" style="grid-template-columns:1fr">
+      <div class="stage reveal" style="display:flex;align-items:center;gap:20px;text-align:left;justify-content:center">
+        <div class="art" style="height:auto"><div class="db"><span></span><span></span><span></span><div class="db-glow"></div></div></div>
+        <div>
+          <div class="num">04</div>
+          <h4 style="margin-top:4px">Store in ChromaDB</h4>
+          <p>Each chunk saved as <b>vector + text + citation metadata</b> (source file &amp; section) in a persistent collection — ready for instant similarity search.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ QUERY FLOW ============ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Online · every message</div>
+      <h2>A question, end to end</h2>
+      <p>Follow one message — "Can I still return my fridge?" — as it flows down through the stack and streams back as a grounded answer.</p>
+    </div>
+    <div class="pipe">
+      <div class="node reveal">
+        <div class="ico ic-front"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10h8M8 14h5"/><path d="M4 5h16v14l-3-3H4z"/></svg></div>
+        <div class="txt"><h3>1 · User asks in the chat UI</h3><p>The React app sends the message with the signed-in user's bearer token.</p><span class="meta">POST /api/chat/stream</span></div>
+      </div>
+      <div class="flow"><span class="pkt"></span></div>
+      <div class="node reveal">
+        <div class="ico ic-api"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 7.6 8 10 4.6-2.4 8-5 8-10V6z"/></svg></div>
+        <div class="txt"><h3>2 · API resolves the user</h3><p>FastAPI verifies the token → a User with a role. That identity drives every access decision downstream.</p><span class="meta">auth.get_user(token)</span></div>
+      </div>
+      <div class="flow"><span class="pkt"></span></div>
+      <div class="node reveal">
+        <div class="ico ic-agent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></div>
+        <div class="txt"><h3>3 · Agent decides what to do</h3><p>Semantic Kernel's ChatCompletionAgent reads the question and auto-selects which tools to call — here, the Policy search.</p><span class="meta">FunctionChoiceBehavior.Auto()</span></div>
+      </div>
+      <div class="flow"><span class="pkt"></span></div>
+      <div class="node reveal">
+        <div class="ico ic-sec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+        <div class="txt"><h3>4 · Guardrail filter intercepts</h3><p>Every tool call passes through the filter: it logs the call, blocks card data, and enforces RBAC on order lookups — <b>before</b> the tool runs.</p><span class="meta">FUNCTION_INVOCATION filter</span></div>
+      </div>
+      <div class="flow"><span class="pkt v"></span></div>
+      <div class="node reveal">
+        <div class="ico ic-rag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+        <div class="txt"><h3>5 · Hybrid retrieval runs</h3><p>The Policy tool queries the knowledge base — vector + keyword search, fused and reranked (detailed below).</p><span class="meta">HybridRetriever.search()</span></div>
+      </div>
+      <div class="flow"><span class="pkt v"></span></div>
+      <div class="node reveal">
+        <div class="ico ic-agent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 7v5l3 2"/></svg></div>
+        <div class="txt"><h3>6 · LLM composes a grounded answer</h3><p>The model writes the reply using only the retrieved passages, and cites the source section it used.</p><span class="meta">"…30 days (policies_returns.md)"</span></div>
+      </div>
+      <div class="flow"><span class="pkt"></span></div>
+      <div class="node reveal">
+        <div class="ico ic-lemon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg></div>
+        <div class="txt"><h3>7 · Streamed back live</h3><p>Tokens, tool-call events, and citations stream to the browser as Server-Sent Events — the user watches the answer appear word by word.</p><span class="meta">event: token · tool_call · citations</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HYBRID RETRIEVAL DETAIL ============ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Inside step 5</div>
+      <h2>Why retrieval uses two searches</h2>
+      <p>One similarity metric misses things. NimbusSupport runs a dense and a sparse search in parallel, fuses them, then lets an LLM make the final precise cut.</p>
+    </div>
+    <div class="retr">
+      <div class="fork">
+        <div class="branch dense reveal">
+          <h4><span class="b"></span>Dense · vector search</h4>
+          <p>Embeds the question and finds the <b>top 10</b> semantically closest chunks in ChromaDB. Great at meaning — "package is late" ≈ "shipping delay."</p>
+        </div>
+        <div class="branch sparse reveal">
+          <h4><span class="b"></span>Sparse · BM25</h4>
+          <p>Classic keyword ranking over the same corpus, <b>top 10</b>. Great at exact terms — "GST invoice", an order ID, a product name.</p>
+        </div>
+      </div>
+      <div class="mini-flow"><span class="pkt"></span></div>
+      <div class="merge reveal">
+        <b>Reciprocal Rank Fusion (RRF)</b> merges both ranked lists into one — no need to compare incompatible scores. Keeps the <b>top 8</b> candidates.
+      </div>
+      <div class="mini-flow"><span class="pkt"></span></div>
+      <div class="merge reveal" style="border-style:solid;border-color:var(--c-rag);background:rgba(125,91,176,.08)">
+        <b>LLM reranker</b> reads the 8 candidates against the question and returns the <b>final 4</b>, most-relevant first — the "retrieve broad, rerank precise" pattern.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECURITY ============ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">The centerpiece</div>
+      <h2>Security lives in code, not the prompt</h2>
+      <p>The guardrail filter wraps every single tool call. Because it runs outside the model, no clever wording can talk its way past it.</p>
+    </div>
+    <div class="sec-card reveal">
+      <h3>The FUNCTION_INVOCATION filter</h3>
+      <p style="color:var(--ink-mid);margin:6px 0 0">Three jobs, on every tool the agent tries to use:</p>
+      <ul class="sec-list">
+        <li><span class="k">🛡️</span><div><b>Role-based access control.</b> A customer may only see their own orders; staff (admin / manager / sales) see all. Checked against the logged-in identity — not what the message claims.</div></li>
+        <li><span class="k">🚫</span><div><b>Card-data block.</b> Any call mentioning a card number, CVV, or PIN is hard-blocked for every role, including admins. Some rules outrank hierarchy.</div></li>
+        <li><span class="k">📋</span><div><b>Audit trail.</b> Every call — allowed or blocked — is recorded and streamed to the UI's tool-call trace, exactly what a compliance team needs.</div></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATS ============ -->
+<section>
+  <div class="wrap">
+    <div class="stats">
+      <div class="stat reveal"><div class="n" data-count="8">0</div><div class="l">policy documents</div></div>
+      <div class="stat reveal"><div class="n" data-count="44">0</div><div class="l">searchable chunks</div></div>
+      <div class="stat reveal"><div class="n" data-count="3">0</div><div class="l">agent tools</div></div>
+      <div class="stat reveal"><div class="n" data-count="4">0</div><div class="l">passages per answer</div></div>
+      <div class="stat reveal"><div class="n" data-count="8">0</div><div class="l">supported LLM providers</div></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="brand">NimbusSupport</div>
+    <div style="margin-top:6px">Agentic RAG architecture · Semantic Kernel · FastAPI · React · any LLM provider</div>
+  </div>
+</footer>
+
+<script>
+// scroll reveal
+const io=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.15});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+// count-up on reveal
+const cio=new IntersectionObserver((es)=>{es.forEach(e=>{
+  if(!e.isIntersecting)return; const el=e.target; const t=+el.dataset.count; let n=0;
+  const step=Math.max(1,Math.round(t/28));
+  const tick=()=>{n=Math.min(t,n+step);el.textContent=n;if(n<t)requestAnimationFrame(tick)};
+  tick(); cio.unobserve(el);
+})},{threshold:.6});
+document.querySelectorAll('[data-count]').forEach(el=>cio.observe(el));
+
+// ---------- one sequential traveller: question ▸ flows ▸ answer ▸ loop ----------
+(function(){
+  const svg=document.querySelector('.wires');
+  if(!svg) return;
+  const P=id=>document.getElementById(id);
+  const delay=ms=>new Promise(r=>setTimeout(r,ms));
+  const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // pause the loop while the map is scrolled out of view
+  let onScreen=true;
+  const vio=new IntersectionObserver(es=>es.forEach(e=>{onScreen=e.isIntersecting}),{threshold:.05});
+  vio.observe(document.querySelector('.map-hero'));
+
+  function spawn(symId, extra){
+    const g=P(symId).cloneNode(true);
+    g.removeAttribute('id');
+    g.setAttribute('class','trav'+(extra?' '+extra:''));
+    svg.appendChild(g);
+    return g;
+  }
+  function put(g,path,rev){ const p=path.getPointAtLength(rev?path.getTotalLength():0); g.setAttribute('transform',`translate(${p.x},${p.y})`); }
+  function fade(g){ g.style.transition='opacity .3s'; g.style.opacity='0'; setTimeout(()=>g.remove(),320); }
+
+  function along(path,g,dur,rev){
+    return new Promise(res=>{
+      const len=path.getTotalLength(); let start=null;
+      function frame(ts){
+        if(start===null) start=ts;
+        const p=Math.min(1,(ts-start)/dur);
+        const pt=path.getPointAtLength((rev?1-p:p)*len);
+        g.setAttribute('transform',`translate(${pt.x},${pt.y})`);
+        p<1 ? requestAnimationFrame(frame) : res();
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+  async function seq(g,ids,dur,rev){ for(const id of ids){ put(g,P(id),rev); await along(P(id),g,dur||820,rev); } }
+
+  if(reduce){ const q=spawn('sym-q'); put(q,P('w1')); return; } // static, no motion
+
+  async function loop(){
+    while(true){
+      while(!onScreen) await delay(400);
+      // 1 — question travels in: user → front → api
+      const q=spawn('sym-q'); put(q,P('w1'));
+      await seq(q,['w1','w2']);
+      // 1a — API checks identity: dip to users.json and back
+      await seq(q,['w5']);            // API → users.json (verify token & role)
+      await seq(q,['w5'],620,true);   // back up to API
+      // 1b — continue: api → agent → guardrail
+      await seq(q,['w3','w6']);
+      fade(q); await delay(120);
+      // 2 — PARALLEL fan-out through the guardrail to the tools & their data
+      const a=spawn('sym-q'), b=spawn('sym-q'), c=spawn('sym-q');
+      await Promise.all([
+        seq(a,['w7','w10']),          // Orders → orders.json
+        seq(b,['w9','w11','w12']),    // Policy → Hybrid RAG → ChromaDB
+        seq(c,['w8']),                // Currency
+      ]);
+      fade(a); fade(b); fade(c); await delay(160);
+      // 3 — agent composes with the LLM (out and back)
+      const m=spawn('sym-q');
+      await seq(m,['w4'],700); await seq(m,['w4'],640,true);
+      fade(m); await delay(120);
+      // 4 — answer streams back THROUGH the API: agent → api → front → user
+      const ans=spawn('sym-a','ans');
+      await seq(ans,['wR1','wR2','wR3'],820);
+      fade(ans);
+      await delay(750);
+    }
+  }
+  loop();
+})();
+</script>
+</body>
+</html>
