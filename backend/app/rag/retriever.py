@@ -1,9 +1,10 @@
 from functools import lru_cache
 import chromadb
 from rank_bm25 import BM25Okapi
-from app.config import CHROMA_DIR, COLLECTION_NAME
+from app.config import CHROMA_DIR, LEGACY_COLLECTION_NAME, collection_name
 from opentelemetry import trace
-from app.kernel_setup import azure_chat, azure_embedding
+from app.kernel_setup import get_chat_service
+from app.rag.embeddings import get_embedder
 from app.rag.reranker import llm_rerank
 from app.rag.retriever_types import Candidate
 
@@ -21,14 +22,20 @@ def _tokenize(text: str) -> list[str]:
 class HybridRetriever:
     def __init__(self) -> None:
         self._client = chromadb.PersistentClient(path=str(CHROMA_DIR))
+        name = collection_name()
+        existing = {c.name for c in self._client.list_collections()}
+        # Fall back to the pre-multi-provider collection so older local indexes keep working.
+        if name not in existing and LEGACY_COLLECTION_NAME in existing:
+            name = LEGACY_COLLECTION_NAME
         try:
-            self._collection = self._client.get_collection(COLLECTION_NAME)
-        except Exception as exc: 
+            self._collection = self._client.get_collection(name)
+        except Exception as exc:
             raise RuntimeError(
-                f"Collection '{COLLECTION_NAME}' not found in ChromaDB at {CHROMA_DIR}. "
+                f"Collection '{collection_name()}' not found in ChromaDB at {CHROMA_DIR}. "
+                "Build it for the current embedding model with: uv run python -m app.rag.ingest"
             ) from exc
-        self._embedder = azure_embedding()
-        self._chat = azure_chat()
+        self._embedder = get_embedder()
+        self._chat = get_chat_service()
         self._load_corpus()
 
     def _load_corpus(self) -> None:
@@ -47,8 +54,8 @@ class HybridRetriever:
         return await llm_rerank(query, candidates, self._chat, top_k=top_k)
     
     async def _vector_search(self, query: str) -> list[str]:
-        vector = (await self._embedder.generate_embeddings([query]))[0]
-        results = self._collection.query(query_embeddings=[vector.tolist()], n_results=VECTOR_TOP_N)
+        vector = (await self._embedder.embed([query]))[0]
+        results = self._collection.query(query_embeddings=[vector], n_results=VECTOR_TOP_N)
         return results["ids"][0]
     
     def _bm25_search(self, query: str) -> list[str]:

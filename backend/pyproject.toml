@@ -8,11 +8,12 @@ dependencies = [
     "chromadb>=1.5.9",
     "fastapi>=0.139.1",
     "langchain-text-splitters>=1.1.2",
+    "openai>=1.60.0",
     "opentelemetry-exporter-otlp-proto-http>=1.44.0",
     "opentelemetry-instrumentation-fastapi>=0.65b0",
     "opentelemetry-instrumentation-httpx>=0.65b0",
     "opentelemetry-sdk>=1.44.0",
     "python-dotenv>=1.2.2",
     "rank-bm25>=0.2.2",
-    "semantic-kernel>=1.36.0",
+    "semantic-kernel[anthropic]>=1.36.0",
 ]

@@ -1,5 +1,5 @@
 import re
-from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion, AzureChatPromptExecutionSettings
+from semantic_kernel.connectors.ai.chat_completion_client_base import ChatCompletionClientBase
 from semantic_kernel.contents import ChatHistory
 from app.rag.retriever_types import Candidate
 
@@ -26,16 +26,17 @@ def _parse_order(raw: str, valid_ids: set[str]) -> list[str]:
     return ordered
 
 async def llm_rerank(
-        query: str, candidates: list[Candidate], chat_service: AzureChatCompletion, top_k: int = 4
+        query: str, candidates: list[Candidate], chat_service: ChatCompletionClientBase, top_k: int = 4
 ) -> list[Candidate]:
     if not candidates:
         return []
     if len(candidates) <= top_k:
         return candidates
-    
+
     history = ChatHistory()
     history.add_user_message(_PROMPT.format(query=query, listing=_format_listing(candidates)))
-    settings = AzureChatPromptExecutionSettings()
+    # Each provider has its own settings class — ask the service for the right one.
+    settings = chat_service.instantiate_prompt_execution_settings()
 
     reply = await chat_service.get_chat_message_content(history, settings)
     by_id = {c.id: c for c in candidates}
