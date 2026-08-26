@@ -44,7 +44,13 @@ jobs:
 
       - name: Test backend
         working-directory: backend
-        run: uv run python -m unittest discover -s . -p 'test*.py'
+        run: |
+          test_files=$(find . -path './.venv' -prune -o -type f \( -name 'test*.py' -o -name '*_test.py' \) -print)
+          if [[ -n "${test_files}" ]]; then
+            uv run python -m unittest discover -s . -p 'test*.py'
+          else
+            echo "::notice::No backend test files are configured; skipping unittest discovery."
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
