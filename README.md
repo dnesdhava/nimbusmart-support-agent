@@ -95,6 +95,20 @@ npm run dev
 
 Or start both at once from the project root with `./run.sh`.
 
+### Tests and checks
+
+This repository does not yet include an automated test suite. Run the available backend and
+frontend checks before making changes:
+
+```bash
+cd backend
+uv run python -m compileall app
+
+cd ../frontend
+npm install
+npm run build
+```
+
 ## Choosing a provider
 
 Set two variables in `backend/.env` and everything else follows:
